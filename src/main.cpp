@@ -5,22 +5,23 @@
 #include "bmp3XX.h"
 #include "Models.h"
 #include "mpu9250sensor.h"
+
 void dataBMEFunc();
 void dataBNOFunc();
 void dataBMPFunc();
 void dataMPU9250Func();
 void printDataFunc();
+void thrusterControlFunc();
 // void loraTransmitFunc(){};
 // void loraReceiveFunc(){};
-void thrusterControlFunc();
 float calculateVelocity(float currentAltitude);
 
 TaskScheduler dataBME(1, "dataBME", 80, dataBMEFunc);
 TaskScheduler dataBMP(2, "dataBMP", 80, dataBMPFunc);
-TaskScheduler dataBNO(3, "dataBNO", 80, dataBNOFunc);
+TaskScheduler dataBNO(3, "dataBNO", 10, dataBNOFunc);
 TaskScheduler dataMPU(3, "dataMPU", 80, dataMPU9250Func);
 TaskScheduler logData(3, "PrintData", 1000, printDataFunc);
-TaskScheduler thrusterControl(3, "thrusterControl", 80, thrusterControlFunc);
+TaskScheduler thrusterControl(3, "thrusterControl", 10, thrusterControlFunc);
 // TaskScheduler loraTransmit(4, "loraTask", 1000, loraTransmitFunc);
 // TaskScheduler loraReceive(5, "loraReceive", 1000, loraReceiveFunc);
 
