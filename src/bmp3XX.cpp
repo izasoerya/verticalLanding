@@ -1,38 +1,38 @@
 #include "bmp3XX.h"
 
-#define SEALEVELPRESSURE_HPA (1013.25)
-
-BMP::BMP() : bmp(Adafruit_BMP3XX()) {}
+BMP::BMP() : bmp(BMP388_DEV(Wire1)) {}
 
 bool BMP::begin()
 {
-    if (bmp.begin_I2C())
-    {
-        bmp.setTemperatureOversampling(BMP3_OVERSAMPLING_16X);
-        bmp.setPressureOversampling(BMP3_OVERSAMPLING_4X);
-        bmp.setIIRFilterCoeff(BMP3_IIR_FILTER_COEFF_3);
-        bmp.setOutputDataRate(BMP3_ODR_50_HZ);
-        return true;
-    }
-    return false;
+    bmp.begin();                           // Default initialisation, place the BMP388 into SLEEP_MODE
+    bmp.setTimeStandby(TIME_STANDBY_80MS); // Set the standby time to 1.3 seconds
+    bmp.startNormalConversion();
+    return true;
 }
 
-float BMP::getTemperature()
+void BMP::setBasePressure(float basePressure)
 {
-    return bmp.temperature;
+    bmp.setSeaLevelPressure(basePressure);
 }
 
-float BMP::getPressure()
+float BMP::getTemperature(float temperature)
 {
-    return bmp.pressure;
+    return bmp.getTemperature(temperature);
+}
+
+float BMP::getPressure(float pressure)
+{
+    return bmp.getPressure(pressure);
 }
 
 float BMP::getAltitude(float basePressure)
 {
-    return bmp.readAltitude(basePressure);
+    return bmp.getAltitude(basePressure);
 }
 
-bool BMP::getSensorStatus()
+bool BMP::getSensorStatus(float &temperature, float &pressure, float &altitude)
 {
-    return bmp.performReading();
+    bmp.getMeasurements(temperature, pressure, altitude);
+    // return bmp.performReading();
+    return true;
 }

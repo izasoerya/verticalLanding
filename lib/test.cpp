@@ -1,3 +1,5 @@
+
+
 #include <Arduino.h>
 #include <Scheduler.h>
 #include "BNO.h"
@@ -9,17 +11,17 @@ void dataBMEFunc();
 void dataBNOFunc();
 void dataBMPFunc();
 void printDataFunc();
-// void loraTransmitFunc(){};
-// void loraReceiveFunc(){};
-// void thrusterControlFunc();
+void loraTransmitFunc(){};
+void loraReceiveFunc(){};
+void thrusterControlFunc();
 
 TaskScheduler dataBME(1, "dataBME", 100, dataBMEFunc);
 TaskScheduler dataBMP(2, "dataBMP", 100, dataBMPFunc);
 TaskScheduler dataBNO(3, "dataBNO", 100, dataBNOFunc);
 TaskScheduler logData(3, "PrintData", 1000, printDataFunc);
-// TaskScheduler loraTransmit(4, "loraTask", 1000, loraTransmitFunc);
-// TaskScheduler loraReceive(5, "loraReceive", 1000, loraReceiveFunc);
-// TaskScheduler thrusterControl(6, "thrusterControl", 10, thrusterControlFunc);
+TaskScheduler loraTransmit(4, "loraTask", 1000, loraTransmitFunc);
+TaskScheduler loraReceive(5, "loraReceive", 1000, loraReceiveFunc);
+TaskScheduler thrusterControl(6, "thrusterControl", 10, thrusterControlFunc);
 
 BNO bno;
 BME bme;
@@ -35,19 +37,18 @@ void setup()
     bno.calibrate();
 
     bmp.begin() ? Serial.println("BMP388 initialized") : Serial.println("BMP388 failed to initialize");
-    delay(5000);
-    float temperature, pressure, altitude;
-    bmp.getSensorStatus(temperature, pressure, altitude);
-    Serial.println(pressure); // debug
-    bmp.setBasePressure(pressure);
+    bmp.getTemperature();
+    bmp.getPressure();
+    bmp.getAltitude(1013.25);
 
     bme.begin();
     bme.getTemperature();
     bme.getPressure();
-    Serial.println(bme.getPressure()); // debug
     bme.setCurrentPressure();
 
     currentState = initialization;
+    data.basePressure = bme.getPressure();
+    Serial.println("base pressure: " + String(data.basePressure));
 }
 
 void loop()
@@ -76,14 +77,13 @@ void dataBNOFunc()
 
 void dataBMPFunc()
 {
-    // data.counter++;
-    float temperature, pressure, altitude;
-    bmp.getSensorStatus(temperature, pressure, altitude);
-    if (temperature > 0)
+    data.counter++;
+    if (data.counter > 2)
     {
-        data.temperatureBMP = temperature;
-        data.pressureBMP = pressure;
-        data.altitudeBMP = altitude;
+        bmp.getSensorStatus();
+        data.temperatureBMP = bmp.getTemperature();
+        data.pressureBMP = bmp.getPressure();
+        data.altitudeBMP = bmp.getAltitude(bmpBasePressure / 100.0F);
     }
 }
 
@@ -103,17 +103,3 @@ void thrusterControlFunc()
         // control thrusters
     }
 }
-
-// #include <Arduino.h>
-
-// void setup()
-// {
-//     // put your setup code here, to run once:
-//     Serial.begin(9600);
-// }
-
-// void loop() {
-//     // put your main code here, to run repeatedly:
-//     Serial.println("Hello World");
-//     delay(1000);
-// }

@@ -1,28 +1,29 @@
-#ifndef BMP388_H
-#define BMP388_H
+#ifndef BMP388s_H
+#define BMP388s_H
 
-#include "Adafruit_BMP3XX.h"
-#include <math.h>
+#include <BMP388_DEV.h>
 
-
-class BMP {
+class BMP
+{
 private:
-    Adafruit_BMP3XX bmp;
-    struct kalmanVar {
-      float Estimate = 0;
-      float ErrorEstimate = 0.3;
-      float Gain;
-      float Measurement;
-    };
-    float ePressure;
-public:
-    BMP();
-    bool begin();
-    float getTemperature();
-    float getPressure();
-    float getAltitude(float basePressure);
-    bool getSensorStatus();
+  BMP388_DEV bmp;
+  struct kalmanVar
+  {
+    float Estimate = 0;
+    float ErrorEstimate = 0.3;
+    float Gain;
+    float Measurement;
+  };
+  float ePressure;
 
+public:
+  BMP();
+  bool begin();
+  void setBasePressure(float basePressure);
+  float getTemperature(float temperature);
+  float getPressure(float pressure);
+  float getAltitude(float basePressure);
+  bool getSensorStatus(float &temperature, float &pressure, float &altitude);
 };
 
 #endif
