@@ -10,9 +10,12 @@ enum RocketState
 
 struct FlightData
 {
-    float angleX;
-    float angleY;
-    float angleZ;
+    float angleXBNO;
+    float angleYBNO;
+    float angleZBNO;
+    float angleXMPU;
+    float angleYMPU;
+    float angleZMPU;
     float altitudeBMP;
     float temperatureBMP;
     float pressureBMP;

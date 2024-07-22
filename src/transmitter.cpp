@@ -9,7 +9,7 @@ String LoraDevice::constructMessage(FlightData data)
     snprintf(buffer, sizeof(buffer),
              "%.2f,%.2f,%.2f,"
              "%.2f",
-             data.angleX, data.angleY, data.angleZ,
+             data.angleXBNO, data.angleYBNO, data.angleZBNO,
              data.altitudeBME);
     return buffer;
 }
