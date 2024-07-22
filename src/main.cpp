@@ -89,14 +89,12 @@ void loop()
     thrusterControl.runTask();
 
     if (currentState == initialization && finalData.altitude > 3)
-    {
         currentState = flying;
-    }
 
     finalData.roll = (data.angleXBNO);
     finalData.pitch = (data.angleYBNO);
     finalData.yaw = (data.angleZBNO);
-    finalData.altitude = (44300 * (1 - pow(data.pressureBME / bmpBasePressure, (1 / 5.255))));
+    finalData.altitude = (44300 * (1 - pow(data.pressureBME / bmpBasePressure, (1 / 5.255)))) + 0.2;
     finalData.temperature = (data.temperatureBME + data.temperatureBMP) / 2;
     finalData.pressure = (data.pressureBME + data.pressureBMP) / 2;
 

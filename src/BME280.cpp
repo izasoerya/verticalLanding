@@ -11,7 +11,7 @@ void BME::begin()
   {
     Serial.println("The sensor did not respond. Please check wiring.");
   }
-  bme.setFilter(4);
+  bme.setFilter(3);
   bme.setHumidityOverSample(0);
   bme.setPressureOverSample(3);
 }
