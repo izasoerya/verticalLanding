@@ -12,24 +12,35 @@ void dataMPU9250Func();
 void printDataFunc();
 // void loraTransmitFunc(){};
 // void loraReceiveFunc(){};
-// void thrusterControlFunc();
+void thrusterControlFunc();
+float calculateVelocity(float currentAltitude);
 
-TaskScheduler dataBME(1, "dataBME", 100, dataBMEFunc);
-TaskScheduler dataBMP(2, "dataBMP", 100, dataBMPFunc);
-TaskScheduler dataBNO(3, "dataBNO", 100, dataBNOFunc);
-TaskScheduler dataMPU(3, "PrintData", 1000, dataMPU9250Func);
+TaskScheduler dataBME(1, "dataBME", 80, dataBMEFunc);
+TaskScheduler dataBMP(2, "dataBMP", 80, dataBMPFunc);
+TaskScheduler dataBNO(3, "dataBNO", 80, dataBNOFunc);
+TaskScheduler dataMPU(3, "dataMPU", 80, dataMPU9250Func);
 TaskScheduler logData(3, "PrintData", 1000, printDataFunc);
+TaskScheduler thrusterControl(3, "thrusterControl", 80, thrusterControlFunc);
 // TaskScheduler loraTransmit(4, "loraTask", 1000, loraTransmitFunc);
 // TaskScheduler loraReceive(5, "loraReceive", 1000, loraReceiveFunc);
-// TaskScheduler thrusterControl(6, "thrusterControl", 10, thrusterControlFunc);
 
 BNO bno;
 BME bme;
 BMP bmp;
 MPU9250Sensor mpu;
 FlightData data;
+FinalData finalData;
 RocketState currentState;
 float bmpBasePressure;
+
+#define PWM1 22 // MAIN THRUSTER
+#define PWM2 4  // roll thruster -
+#define PWM3 7  // pitch thruster -
+#define PWM4 6  // roll thruster +
+#define PWM5 5  // pitch thruster +
+
+float lastAltitude = 0;
+unsigned long lastTime = 0;
 
 void setup()
 {
@@ -48,11 +59,22 @@ void setup()
 
     bme.begin();
     bme.getTemperature();
-    bme.getPressure();
     Serial.println(bme.getPressure()); // debug
     bme.setCurrentPressure();
-
+    bmpBasePressure = bme.getPressure() / 100.0F;
     currentState = initialization;
+    pinMode(PWM1, OUTPUT);
+    pinMode(PWM2, OUTPUT);
+    pinMode(PWM3, OUTPUT);
+    pinMode(PWM4, OUTPUT);
+    pinMode(PWM5, OUTPUT);
+
+    digitalWrite(PWM1, LOW);
+    digitalWrite(PWM2, LOW);
+    digitalWrite(PWM3, LOW);
+    digitalWrite(PWM4, LOW);
+    digitalWrite(PWM5, LOW);
+    lastTime = millis();
 }
 
 void loop()
@@ -63,12 +85,28 @@ void loop()
     dataBMP.runTask();
     dataMPU.runTask();
     logData.runTask();
+    thrusterControl.runTask();
+
+    if (currentState == initialization && finalData.altitude > 3)
+    {
+        currentState = flying;
+    }
+
+    finalData.roll = (data.angleXBNO);
+    finalData.pitch = (data.angleYBNO);
+    finalData.yaw = (data.angleZBNO);
+    finalData.altitude = (44300 * (1 - pow(data.pressureBME / bmpBasePressure, (1 / 5.255))));
+    finalData.temperature = (data.temperatureBME + data.temperatureBMP) / 2;
+    finalData.pressure = (data.pressureBME + data.pressureBMP) / 2;
+
+    // Calculate velocity
+    finalData.velocity = calculateVelocity(finalData.altitude);
 }
 
 void dataBMEFunc()
 {
     data.temperatureBME = bme.getTemperature();
-    data.pressureBME = bme.getPressure();
+    data.pressureBME = bme.getPressure() / 100.0F;
     data.altitudeBME = bme.getAltitude();
 }
 
@@ -108,29 +146,109 @@ void printDataFunc()
 {
     char buffer[256];
     snprintf(buffer, sizeof(buffer),
-             "BME280: Temp %0.1f, Press %0.1f, Alti %0.1f,     BMP388: Temp %0.1f, Press %0.1f, Alti %0.1f       MPU9250: Roll %0.1f, Pitch %0.1f, Yaw %0.1f,    BNO055: Roll %0.1f, Pitch %0.1f, Yaw %0.1f,",
-             data.temperatureBME, data.pressureBME, data.altitudeBME, data.temperatureBMP, data.pressureBMP, data.altitudeBMP, data.angleXMPU, data.angleYMPU, data.angleZMPU, data.angleXBNO, data.angleYBNO, data.angleZBNO);
+             "roll: %0.1f, pitch: %0.1f, yaw: %0.1f, altitude: %0.1f, velocity: %0.1f, temperature: %0.1f, pressure: %0.1f",
+             finalData.roll, finalData.pitch, finalData.yaw, finalData.altitude, finalData.velocity, finalData.temperature, finalData.pressure);
     Serial.println(String(buffer));
 }
 
 void thrusterControlFunc()
 {
-    if (currentState == flying)
+    static bool rollPositiveThrusterOn = false;
+    static bool rollNegativeThrusterOn = false;
+    static bool pitchPositiveThrusterOn = false;
+    static bool pitchNegativeThrusterOn = false;
+
+    // Roll+ thruster control
+    if (finalData.roll > 30)
     {
-        // control thrusters
+        if (!rollPositiveThrusterOn)
+        {
+            Serial.println("Roll+ thruster activated");
+            digitalWrite(PWM4, HIGH);
+
+            rollPositiveThrusterOn = true;
+        }
+    }
+    else if (finalData.roll < 5)
+    {
+        if (rollPositiveThrusterOn)
+        {
+            Serial.println("Roll+ thruster deactivated");
+            digitalWrite(PWM4, LOW);
+
+            rollPositiveThrusterOn = false;
+        }
+    }
+
+    // Roll- thruster control
+    if (finalData.roll < -30)
+    {
+        if (!rollNegativeThrusterOn)
+        {
+            Serial.println("Roll- thruster activated");
+            digitalWrite(PWM2, HIGH);
+            rollNegativeThrusterOn = true;
+        }
+    }
+    else if (finalData.roll > -5)
+    {
+        if (rollNegativeThrusterOn)
+        {
+            Serial.println("Roll- thruster deactivated");
+            digitalWrite(PWM2, LOW);
+            rollNegativeThrusterOn = false;
+        }
+    }
+
+    // Pitch+ thruster control
+    if (finalData.pitch > 30)
+    {
+        if (!pitchPositiveThrusterOn)
+        {
+            Serial.println("Pitch+ thruster activated");
+            digitalWrite(PWM5, HIGH);
+            pitchPositiveThrusterOn = true;
+        }
+    }
+    else if (finalData.pitch < 5)
+    {
+        if (pitchPositiveThrusterOn)
+        {
+            Serial.println("Pitch+ thruster deactivated");
+            digitalWrite(PWM5, LOW);
+            pitchPositiveThrusterOn = false;
+        }
+    }
+
+    // Pitch- thruster control
+    if (finalData.pitch < -30)
+    {
+        if (!pitchNegativeThrusterOn)
+        {
+            Serial.println("Pitch- thruster activated");
+            digitalWrite(PWM3, HIGH);
+            pitchNegativeThrusterOn = true;
+        }
+    }
+    else if (finalData.pitch > -5)
+    {
+        if (pitchNegativeThrusterOn)
+        {
+            Serial.println("Pitch- thruster deactivated");
+            digitalWrite(PWM3, LOW);
+            pitchNegativeThrusterOn = false;
+        }
     }
 }
 
-// #include <Arduino.h>
+float calculateVelocity(float currentAltitude)
+{
+    unsigned long currentTime = millis();
+    float timeDiff = (currentTime - lastTime) / 80.0; // Convert to seconds
+    float altitudeDiff = currentAltitude - lastAltitude;
 
-// void setup()
-// {
-//     // put your setup code here, to run once:
-//     Serial.begin(9600);
-// }
+    lastAltitude = currentAltitude;
+    lastTime = currentTime;
 
-// void loop() {
-//     // put your main code here, to run repeatedly:
-//     Serial.println("Hello World");
-//     delay(1000);
-// }
+    return altitudeDiff / timeDiff;
+}

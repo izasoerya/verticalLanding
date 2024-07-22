@@ -26,4 +26,16 @@ struct FlightData
     int counter = 0;
 };
 
+struct FinalData
+{
+    float roll;
+    float pitch;
+    float yaw;
+    float altitude;
+    float temperature;
+    float pressure;
+    float basePressure;
+    float velocity = 0;
+};
+
 #endif

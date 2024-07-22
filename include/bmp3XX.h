@@ -19,7 +19,7 @@ private:
 public:
   BMP();
   bool begin();
-  void setBasePressure(float basePressure);
+  float setBasePressure(float basePressure);
   float getTemperature(float temperature);
   float getPressure(float pressure);
   float getAltitude(float basePressure);
